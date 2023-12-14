@@ -1,0 +1,14 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth.uid == $uid",
+        ".write": "auth.uid == $uid"
+      }
+    },
+    "admins": { //only accessible to cloud function
+      ".read": false,
+      ".write": false
+    }
+  }
+}

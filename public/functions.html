@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ThoughtCloud Functions</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+  </head>
+  <body>
+    <a href="/"><button>Back</button></a>
+    <h1>Firebase functions:</h1>
+    <pre>
+      <code class="language-javascript">
+        const {log} = require("firebase-functions/logger")
+        const {onCall} = require("firebase-functions/v2/https");
+        const {getDatabase} = require("firebase-admin/database");
+        const {initializeApp} = require("firebase-admin/app");
+        initializeApp();
+        
+        
+        exports.get_flag = onCall(async (request) => {        
+            //make sure you're authenticated before giving you the flag
+            const uid = request.auth?.uid ?? false;
+            if(uid == false) return "You aren't even authenticated. Why did you expect this to work?";
+        
+            //make sure you're not a foul mouthed heathen before giving you the flag
+            const json_data = (await getDatabase().ref(`/users/${uid}`).get()).val() ?? "{}";
+            user_data = {};
+            try {
+                old_data = JSON.parse(json_data);
+                //remove swears and save the old data for logging purposes :)
+                if(clean_and_copy(old_data, user_data)){
+                    log("SWEARING DETECTED: ", old_data);
+                    return "No flag for you, you foul mouthed heathen.";
+                }
+            } catch(error) {
+                return "Your user data is not valid.";
+            }
+        
+            //make sure you are admin before giving you the flag
+            const admin_data = (await getDatabase().ref(`/admins/${uid}`).get()).val() ?? {};
+            if(admin_data.is_admin !== true) return "Access denied. You aren't an admin.";
+        
+            //after passing all three checks, you get the flag
+            return process.env.FLAG;
+        });
+        
+        //Copies object "from" to "to" and removes any swears
+        //Returns whether a swear was detected or not
+        const swears = ["crap", "stupid", "idiot", "peenids", "ass"]
+        function clean_and_copy(from, to) {
+            to = to ?? {};
+            for([key, val] of Object.entries(from)) {
+                if(!swears.includes(key) && !swears.includes(val)) {
+                    if(typeof val == 'object') {
+                        clean_and_copy(val, to[key]);
+                    } else {
+                        to[key] = val;
+                    }
+                } else {
+                    return true;
+                }
+            }
+            return false;
+        }
+      </code>
+    </pre>
+    <br>
+    <h1>Database Rules:</h1>
+    <pre>
+      <code>
+        {
+          "rules": {
+            "users": {
+              "$uid": {
+                ".read": "auth.uid == $uid",
+                ".write": "auth.uid == $uid"
+              }
+            },
+            "admins": { //only accessible to cloud function
+              ".read": false,
+              ".write": false
+            }
+          }
+        }
+      </code>
+    </pre>
+  </body>
+</html>
